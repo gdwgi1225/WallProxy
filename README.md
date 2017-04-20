@@ -1,3 +1,7 @@
+Changes
+===
+Since the development of Wallproxy has stopped, I've just modified the `proxy.ini` to make it easier to co-operate with XX-NET. I've also included more changes for security and compatibility.
+
 wallproxy
 ===
 New version of wallproxy, a general purpose proxy framework in Python. It can run on Python 2.5/2.6/2.7, and an Python environment with ssl, pyOpenSSL, gevent is recommended.
