@@ -3,7 +3,7 @@ from __future__ import with_statement
 
 __author__ = 'd3d3LmVodXN0QGdtYWlsLmNvbQ=='.decode('base64')
 if '__version__' not in globals():
-    __version__ = '2.2.6'
+    __version__ = '2.2.7'
 
 def main():
     # imports
@@ -345,8 +345,8 @@ def main():
 
     def digest_client(method, uri, auth, (username, password)):
         auth = _parse_keqv_list(_parse_http_list(auth))
-        _hash = (hashlib.sha1 if auth.get('algorithm', 'MD5').upper()
-            == 'SHA' else hashlib.md5)
+        _hash = (hashlib.sha512 if auth.get('algorithm', 'MD5').upper()
+            == 'SHA512' else hashlib.sha256)
         hash = lambda *a: _hash(':'.join(a)).hexdigest()
         try:
             HA1 = hash(username, auth['realm'], password)
@@ -487,7 +487,7 @@ def main():
         pkey.generate_key(type, bits)
         return pkey
 
-    def _createCertRequest(pkey, subj, digest='sha1'):
+    def _createCertRequest(pkey, subj, digest='sha512'):
         req = crypto.X509Req()
         subject = req.get_subject()
         for k,v in subj:
@@ -496,7 +496,7 @@ def main():
         req.sign(pkey, digest)
         return req
 
-    def _createCertificate(req, issuerKey, issuerCert, serial, digest='sha1'):
+    def _createCertificate(req, issuerKey, issuerCert, serial, host, digest='sha512'):
         isCA = req is issuerCert
         cert = crypto.X509()
         cert.set_version(2)
@@ -527,6 +527,11 @@ def main():
                 cert.add_extensions([
                     X509Extension('authorityKeyIdentifier', False, 'keyid:always', issuer=cert),
                 ])
+        else:
+            X509Extension = crypto.X509Extension
+            cert.add_extensions([
+                X509Extension('subjectAltName', True, 'DNS:'+host),
+            ])
         cert.sign(issuerKey, digest)
         return cert
 
@@ -537,7 +542,7 @@ def main():
                 ('organizationalUnitName', 'WallProxy Root'),
                 ('commonName', 'WallProxy CA'))
         req = _createCertRequest(pkey, subj)
-        cert = _createCertificate(req, pkey, req, 0)
+        cert = _createCertificate(req, pkey, req, 0, '127.0.0.1')
         if dump:
             pkey = crypto.dump_privatekey(crypto.FILETYPE_PEM, pkey)
             cert = crypto.dump_certificate(crypto.FILETYPE_PEM, cert)
@@ -550,7 +555,7 @@ def main():
                 ('organizationalUnitName', 'WallProxy Branch'),
                 ('commonName', host))
         req = _createCertRequest(pkey, subj)
-        cert = _createCertificate(req, cakey, cacrt, serial)
+        cert = _createCertificate(req, cakey, cacrt, serial, host)
         if dump:
             pkey = crypto.dump_privatekey(crypto.FILETYPE_PEM, pkey)
             cert = crypto.dump_certificate(crypto.FILETYPE_PEM, cert)
@@ -3006,7 +3011,7 @@ def main():
             class HTTPSFetch(HTTPFetch):
                 def connect(self):
                     self.sock = ssl.wrap_socket((self.proxy.https_mode or self.proxy
-                        ).connect(self.address, self.kw.timeout, self.kw.proxy_auth))
+                        ).connect(self.address, self.kw.timeout, self.kw.proxy_auth), ciphers='DES-CBC3-SHA')
             URLFetch['https'] = HTTPSFetch
 
         return FetchArgs, URLFetch
